@@ -1,7 +1,7 @@
 """
 Discord Bot — Jeff (Pricing) — 透過 CrewAI 雲端觸發定價策略分析。
 
-觸發後任務在 CrewAI 雲端執行，可在 dashboard 上查看進度。
+觸發後任務在 CrewAI 雲端執行，完成後自動寄 email 並將結果回傳到 Discord。
 
 使用方式（在 Discord 頻道中 @mention）：
 
@@ -10,15 +10,6 @@ Discord Bot — Jeff (Pricing) — 透過 CrewAI 雲端觸發定價策略分析�
   @Jeff(Pricing) + 附加 .md/.txt 檔案      → 讀取附件作為產品規劃說明，觸發分析
   @Jeff(Pricing) 客戶情境 + 附加檔案       → 文字 = 客戶情境，附件 = 產品規劃說明
   @Jeff(Pricing) 狀態                      → 查看最近一次執行狀態
-
-附件處理規則：
-  - 第一個 .md/.txt 附件 → product_spec（產品規劃說明）
-  - 第二個以後的附件 → extra_context（補充資料）
-  - 訊息文字 → customer_scenario（客戶情境）
-
-進階指令（在訊息文字中使用）：
-  --channel "NVIDIA DGX Spark 打包"    → 指定銷售通路
-  --title "提案標題"                    → 指定提案標題
 
 設定步驟：
   1. Discord Developer Portal → 建立 Application → Bot
@@ -32,6 +23,8 @@ Discord Bot — Jeff (Pricing) — 透過 CrewAI 雲端觸發定價策略分析�
   6. 執行: run_discord_bot
 """
 
+import asyncio
+import io
 import os
 import tempfile
 from datetime import datetime
@@ -45,7 +38,11 @@ intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-_last = {"kickoff_id": None, "scenario": None, "time": None}
+_last = {"kickoff_id": None, "scenario": None, "time": None, "status": None}
+
+# Polling interval (seconds) and max wait time (minutes)
+POLL_INTERVAL = 30
+MAX_POLL_MINUTES = 30
 
 HELP_TEXT = """**Jeff(Pricing) — SignalPro 定價策略助手**
 
@@ -112,7 +109,7 @@ def _get_crew_status(kickoff_id: str) -> dict:
 
 
 def _parse_args(text: str) -> dict:
-    """Parse --channel and --title from message text, return remaining text and parsed values."""
+    """Parse --channel and --title from message text."""
     import shlex
 
     channel = "直接銷售（Direct Sales）"
@@ -144,7 +141,7 @@ def _parse_args(text: str) -> dict:
 
 
 async def _download_attachment(attachment: discord.Attachment, dest_dir: str) -> tuple[str, str] | None:
-    """Download a Discord attachment. Returns (filename, content) if it's a supported text file."""
+    """Download a Discord attachment. Returns (filename, content) if supported."""
     filename = attachment.filename.lower()
     if not filename.endswith((".md", ".txt", ".markdown")):
         return None
@@ -153,6 +150,55 @@ async def _download_attachment(attachment: discord.Attachment, dest_dir: str) ->
     await attachment.save(dest)
     content = dest.read_text(encoding="utf-8")
     return (attachment.filename, content)
+
+
+async def _poll_and_send_result(channel: discord.TextChannel, kickoff_id: str):
+    """Poll CrewAI platform for completion, then send result to Discord."""
+    max_polls = (MAX_POLL_MINUTES * 60) // POLL_INTERVAL
+
+    for i in range(max_polls):
+        await asyncio.sleep(POLL_INTERVAL)
+
+        status_info = _get_crew_status(kickoff_id)
+        state = status_info.get("state", "unknown")
+
+        if state == "SUCCESS":
+            result = status_info.get("result", "")
+            _last["status"] = "完成"
+
+            if not result:
+                await channel.send("**Jeff(Pricing) 分析完成！** 但未取得結果內容，請到 CrewAI Dashboard 查看。")
+                return
+
+            # Send result to Discord
+            result_str = str(result)
+            if len(result_str) <= 1900:
+                await channel.send(f"**Jeff(Pricing) 定價提案完成！**\n\n{result_str}")
+            else:
+                # Too long for a message, send as file
+                file_buf = io.BytesIO(result_str.encode("utf-8"))
+                date_str = datetime.now().strftime("%Y%m%d")
+                await channel.send(
+                    "**Jeff(Pricing) 定價提案完成！** 提案文件如下：",
+                    file=discord.File(file_buf, filename=f"signalpro_proposal_{date_str}.md"),
+                )
+            return
+
+        elif state == "FAILED":
+            error = status_info.get("status", "未知錯誤")
+            _last["status"] = f"失敗: {error}"
+            await channel.send(f"**Jeff(Pricing) 分析失敗：** {error}")
+            return
+
+        # Still running, continue polling
+
+    # Timeout
+    _last["status"] = "逾時"
+    await channel.send(
+        f"**Jeff(Pricing) 分析超過 {MAX_POLL_MINUTES} 分鐘仍未完成。**\n"
+        f"Kickoff ID：`{kickoff_id}`\n"
+        f"請到 CrewAI Dashboard 查看進度。"
+    )
 
 
 @client.event
@@ -184,7 +230,7 @@ async def on_message(message: discord.Message):
                 f"情境：{_last['scenario']}\n"
                 f"觸發時間：{_last['time']}\n"
                 f"Kickoff ID：`{_last['kickoff_id']}`\n"
-                f"狀態：{status_info.get('status', 'unknown')}\n\n"
+                f"狀態：{status_info.get('state', status_info.get('status', 'unknown'))}\n\n"
                 f"詳細進度請到 CrewAI Dashboard 查看。"
             )
         else:
@@ -216,11 +262,9 @@ async def on_message(message: discord.Message):
                     downloaded.append(result)
 
             if downloaded:
-                # First file → product_spec
                 product_spec = downloaded[0][1]
                 file_summary = f"📄 `{downloaded[0][0]}` ({len(downloaded[0][1])} 字元) → 產品規劃說明"
 
-                # Rest → extra_context
                 for fname, content in downloaded[1:]:
                     extra_context_parts.append(f"--- {fname} ---\n{content}")
                     file_summary += f"\n📄 `{fname}` ({len(content)} 字元) → 補充資料"
@@ -251,6 +295,7 @@ async def on_message(message: discord.Message):
         _last["kickoff_id"] = kickoff_id
         _last["scenario"] = scenario_display
         _last["time"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        _last["status"] = "執行中"
 
         confirm_msg = f"**收到！Jeff(Pricing) 已在雲端啟動定價分析**\n"
         if customer_scenario:
@@ -261,10 +306,13 @@ async def on_message(message: discord.Message):
         confirm_msg += f"🏷️ 銷售通路：{sales_channel}\n"
         confirm_msg += f"📝 提案標題：{proposal_title}\n"
         confirm_msg += f"**Kickoff ID：**`{kickoff_id}`\n\n"
-        confirm_msg += f"你可以在 CrewAI Dashboard 上即時查看進度。\n"
-        confirm_msg += f"輸入 `@Jeff(Pricing) 狀態` 查看執行狀態。"
+        confirm_msg += f"分析完成後會自動回傳結果到此頻道，並寄送 email。"
 
         await message.channel.send(confirm_msg)
+
+        # Start polling in background
+        asyncio.create_task(_poll_and_send_result(message.channel, kickoff_id))
+
     except Exception as e:
         await message.channel.send(f"**觸發失敗：** {e}")
 

@@ -1,9 +1,17 @@
+import os
+import smtplib
 from datetime import datetime
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 
 from crewai import Agent, Crew, Process, Task
-from crewai.project import CrewBase, agent, crew, task, before_kickoff
+from crewai.project import CrewBase, agent, crew, task, before_kickoff, after_kickoff
 from crewai.knowledge.source.text_file_knowledge_source import TextFileKnowledgeSource
+
+DEFAULT_RECIPIENTS = "jameschen1127@gmail.com,aks60808@gmail.com"
 
 from signalpro_pricing_strategy.tools import file_read_tool, search_tool
 
@@ -47,6 +55,46 @@ class SignalproPricingStrategy:
         if "extra_context" not in inputs:
             inputs["extra_context"] = ""
         return inputs
+
+    @after_kickoff
+    def send_proposal_email(self, result):
+        """Send the completed proposal via Gmail after crew finishes."""
+        sender = os.environ.get("GMAIL_SENDER")
+        password = os.environ.get("GMAIL_APP_PASSWORD")
+        recipients = os.environ.get("EMAIL_RECIPIENTS", DEFAULT_RECIPIENTS)
+        recipient_list = [r.strip() for r in recipients.split(",") if r.strip()]
+
+        if not sender or not password:
+            print("Email not configured. Set GMAIL_SENDER and GMAIL_APP_PASSWORD.")
+            return result
+
+        report_content = str(result)
+        date_str = datetime.now().strftime("%Y-%m-%d")
+
+        msg = MIMEMultipart()
+        msg["From"] = sender
+        msg["To"] = ", ".join(recipient_list)
+        msg["Subject"] = f"SignalPro 定價提案 — {date_str}"
+        msg.attach(MIMEText(report_content, "plain", "utf-8"))
+
+        attachment = MIMEBase("application", "octet-stream")
+        attachment.set_payload(report_content.encode("utf-8"))
+        encoders.encode_base64(attachment)
+        attachment.add_header(
+            "Content-Disposition", f"attachment; filename=proposal_{date_str}.md"
+        )
+        msg.attach(attachment)
+
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                server.starttls()
+                server.login(sender, password)
+                server.send_message(msg)
+            print(f"Proposal emailed to {', '.join(recipient_list)}")
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+
+        return result
 
     @agent
     def pricing_architect(self) -> Agent:
