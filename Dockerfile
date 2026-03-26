@@ -2,20 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# System deps for building native extensions
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc g++ && \
-    rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir \
+    "discord.py>=2.4" \
+    "httpx>=0.27" \
+    "python-dotenv>=1.0"
 
-# Copy project files
-COPY pyproject.toml .
-COPY src/ src/
-COPY knowledge/ knowledge/
+COPY src/signalpro_pricing_strategy/discord_bot.py .
 
-# Create output directory
-RUN mkdir -p output
-
-# Install the project and all dependencies
-RUN pip install --no-cache-dir -e .
-
-CMD ["run_discord_bot"]
+CMD ["python", "-c", "from discord_bot import main; main()"]
