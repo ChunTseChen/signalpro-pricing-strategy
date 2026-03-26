@@ -70,8 +70,10 @@ HELP_TEXT = """**Jeff(Pricing) — SignalPro 定價策略助手**
 
 
 def _get_crewai_config():
-    url = os.environ.get("CREWAI_CREW_URL", "")
-    token = os.environ.get("CREWAI_CREW_TOKEN", "")
+    # Railway sometimes has trailing spaces in var names from copy-paste
+    env = {k.strip(): v.strip() for k, v in os.environ.items()}
+    url = env.get("CREWAI_CREW_URL", "")
+    token = env.get("CREWAI_CREW_TOKEN", "")
     missing = []
     if not url:
         missing.append("CREWAI_CREW_URL")
