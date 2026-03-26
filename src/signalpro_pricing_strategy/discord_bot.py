@@ -70,10 +70,19 @@ HELP_TEXT = """**Jeff(Pricing) — SignalPro 定價策略助手**
 
 
 def _get_crewai_config():
-    url = os.environ.get("CREWAI_CREW_URL")
-    token = os.environ.get("CREWAI_CREW_TOKEN")
-    if not url or not token:
-        raise RuntimeError("CREWAI_CREW_URL and CREWAI_CREW_TOKEN must be set in .env")
+    url = os.environ.get("CREWAI_CREW_URL", "")
+    token = os.environ.get("CREWAI_CREW_TOKEN", "")
+    missing = []
+    if not url:
+        missing.append("CREWAI_CREW_URL")
+    if not token:
+        missing.append("CREWAI_CREW_TOKEN")
+    if missing:
+        available = [k for k in os.environ if k.startswith(("CREW", "DISCORD"))]
+        raise RuntimeError(
+            f"Missing env vars: {', '.join(missing)}. "
+            f"Available CREW*/DISCORD* vars: {available}"
+        )
     return url, token
 
 
