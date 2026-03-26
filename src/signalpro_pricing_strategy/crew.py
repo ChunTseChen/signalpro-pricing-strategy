@@ -97,7 +97,7 @@ class SignalproPricingStrategy:
     @crew
     def crew(self) -> Crew:
         knowledge_source = TextFileKnowledgeSource(
-            file_paths=["knowledge/signalpro_pricing_guide.txt"],
+            file_paths=["signalpro_pricing_guide.txt"],
         )
         return Crew(
             agents=self.agents,
