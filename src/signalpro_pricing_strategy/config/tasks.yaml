@@ -1,0 +1,181 @@
+design_pricing:
+  description: >
+    針對以下客戶情境，設計 SignalPro 的定價策略與商業模式方案。
+    仔細閱讀所有提供的產品規劃說明與補充資料，確保你的定價設計完全基於這些文件的內容。
+
+    【客戶情境】
+    {customer_scenario}
+
+    【銷售通路】
+    {sales_channel}
+
+    【產品規劃說明】
+    {product_spec}
+
+    【補充資料】
+    {extra_context}
+
+    你必須完成以下分析：
+
+    一、切入定價設計（Land Pricing）
+    - 根據客戶規模與產業，判斷最適合的切入層級（通常是 Nemoclaw）
+    - 設計低摩擦的進場價格（月訂閱制、免費試用期、首月折扣等）
+    - 明確標示目標買家角色與其預算決策權限
+
+    二、擴展定價路徑（Expand Pricing Path）
+    - 設計從切入層到最高層的升級路徑
+    - 每個升級節點的觸發條件（用戶數、部門數、業務需求）
+    - 每層的定價模型與價格區間
+    - 預估客戶在各階段的年度合約價值（ACV）
+
+    三、PoC 定價策略
+    - 設計 30/60/90 天的 PoC 方案
+    - PoC 的定價（免費 vs 付費 PoC vs 折扣 PoC）
+    - PoC 成功標準與轉正式合約的銜接機制
+    - 如何讓 PoC 結果成為擴展銷售的證據
+
+    四、NVIDIA 硬體打包方案（如適用）
+    - 如果銷售通路為 NVIDIA 打包，設計 DGX Spark + SignalPro 軟體的整合定價
+    - 硬體成本分攤邏輯、軟體授權模式（永久 vs 訂閱）、維護服務費
+    - 與純軟體方案的價格差異化
+
+    五、定價參數建議
+    - 具體價格數字（或區間），單位為 USD/月 或 USD/年
+    - 折扣結構（年繳折扣、多年合約折扣、批量折扣）
+    - 計價單位（per user、per department、per connection、per compute hour）
+
+  expected_output: >
+    結構化的定價架構文件，包含：
+    - 切入定價方案（含具體價格區間）
+    - 五層擴展路徑與每層的定價模型
+    - PoC 定價策略
+    - NVIDIA 打包方案定價（如適用）
+    - 定價參數總表
+  agent: pricing_architect
+
+analyze_competitors:
+  description: >
+    針對以下客戶情境與銷售通路，研究競品的定價策略並提供對比分析。
+    請仔細閱讀產品規劃說明，確保你的競品分析針對 SignalPro 各層產品的實際功能定位。
+
+    【客戶情境】
+    {customer_scenario}
+
+    【銷售通路】
+    {sales_channel}
+
+    【產品規劃說明】
+    {product_spec}
+
+    【補充資料】
+    {extra_context}
+
+    你必須完成以下研究：
+
+    一、直接競品定價調查
+    針對 SignalPro 各層產品的直接競品，蒐集：
+    - 定價模式（per-seat、flat rate、usage-based、custom quote）
+    - 具體價格數據點（公開定價或估算範圍）
+    - 免費方案 / 試用期 / PoC 政策
+    - 合約條款（最低承諾、年繳折扣等）
+
+    競品對標：
+    - Nemoclaw 對標：Slack（$7.25-12.50/user/mo）、Teams（$4-12.50/user/mo）、Notion（$8-15/user/mo）
+    - Sigclaw 內部對標：ServiceNow（custom, ~$100/user/mo）、Monday.com（$9-19/seat/mo）、Celonis（custom, ~$50K+/yr）
+    - Sigclaw 生態系對標：SAP Ariba（transaction-based）、Coupa（custom）、TradeShift（per-transaction）
+    - Sigception 對標：Palantir（$50K-500K+/mo）、C3.ai（custom）、DataRobot（$25K+/yr）
+    - Sigtron 對標：AWS SageMaker（$0.05-50/hr）、Azure ML（usage-based）、CoreWeave（$2-7/GPU-hr）
+
+    二、定價差異化分析
+    - SignalPro 各層相較競品的獨特價值
+    - 可以支撐溢價的差異化點
+    - 需要折價切入的場景
+    - 客戶從競品遷移到 SignalPro 的轉換成本
+
+    三、市場定價基準
+    - 該客戶產業的軟體支出基準
+    - 同規模企業的典型 SaaS 預算
+    - 定價心理學建議（錨定效應、選項結構）
+
+  expected_output: >
+    競品定價對比報告，包含：
+    - 五層產品的競品定價對比表（含具體數字）
+    - 差異化定價理由
+    - 市場定價基準
+    - 定價心理學建議
+  agent: competitive_analyst
+
+write_proposal:
+  description: >
+    將定價架構師與競品分析師的輸出，整合為一份完整的定價提案文件。
+    請確保提案內容與產品規劃說明一致，所有定價建議都能追溯到具體的產品功能與價值。
+
+    【客戶情境】
+    {customer_scenario}
+
+    【銷售通路】
+    {sales_channel}
+
+    【產品規劃說明】
+    {product_spec}
+
+    【補充資料】
+    {extra_context}
+
+    【今日日期】
+    {current_date}
+
+    提案文件必須包含以下章節：
+
+    # SignalPro 定價提案 — {proposal_title}
+
+    ## 1. 客戶情境摘要
+    - 簡述客戶背景、痛點、與需求
+    - 這份提案要解決的核心問題
+
+    ## 2. 建議切入方案
+    - 推薦的首階段產品層級
+    - 具體定價（月費/年費）
+    - 目標買家角色與決策流程
+    - 為什麼這個切入點最適合這個客戶
+
+    ## 3. 階段擴展路徑
+    - 用表格呈現從切入到全面部署的升級地圖
+    - 每階段的觸發條件、目標買家、定價模型
+    - 預估各階段的 ACV
+
+    ## 4. PoC 方案設計
+    - PoC 範圍、時長、定價
+    - 成功標準（量化指標）
+    - 轉正式合約的條件與優惠
+
+    ## 5. 競品定價對比
+    - 對比表格（SignalPro vs 主要競品）
+    - 每層的價格定位與差異化理由
+
+    ## 6. 差異化價值主張
+    - SignalPro 的獨特價值（不是功能清單，是商業價值）
+    - 客戶選擇 SignalPro 而非競品的三個核心理由
+
+    ## 7. 商業條款建議
+    - 合約期限選項
+    - 付款方式與條件
+    - 折扣結構
+    - SLA 與支援等級
+
+    ## 8. 下一步行動
+    - 明確的行動呼籲
+    - 時程建議
+
+    格式要求：
+    - 繁體中文，技術名詞保留英文
+    - Markdown 格式，使用表格、項目符號、粗體標示重點
+    - 語氣專業但不生硬，適合直接呈現給客戶 C-suite
+    - 總長度 2000-3000 字
+
+  expected_output: >
+    一份完整的、可直接放進提案文件的 Markdown 定價方案，
+    包含客戶情境、切入定價、擴展路徑、PoC 策略、競品對比、
+    差異化價值主張、商業條款、與下一步行動。
+  agent: proposal_writer
+  output_file: output/proposal.md
